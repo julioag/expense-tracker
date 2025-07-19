@@ -10,6 +10,8 @@ This project is designed in three iterations:
 2. **Iteration 2**: n8n Integration for email-based expense parsing  
 3. **Iteration 3**: MCP (Model Context Protocol) for LM Studio integration
 
+> 📋 **For complete project status and implementation details, see [PROJECT_STATUS.md](PROJECT_STATUS.md)**
+
 ## Current Features (Iteration 1)
 
 ### ✅ Core Backend (FastAPI + PostgreSQL)
