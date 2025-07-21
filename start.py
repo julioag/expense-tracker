@@ -5,8 +5,8 @@ This script runs database migrations and starts the FastAPI server.
 """
 
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import uvicorn
 from sqlalchemy import create_engine, text
@@ -24,109 +24,183 @@ except ImportError:
 from app.init_db import init_database
 
 
-def run_migrations():
-    """Run Alembic migrations if available, otherwise initialize database."""
-    print("📦 Checking database state...")
-    
+def check_database_state(engine):
+    """Check the current state of the database."""
     try:
-        if not ALEMBIC_AVAILABLE:
-            print("📋 Alembic not available - using direct table creation...")
-            init_database()
-            return
-        
-        # Check if we have an Alembic configuration
-        alembic_cfg_path = Path(__file__).parent / "app" / "alembic.ini"
-        print(f"🔍 Looking for Alembic config at: {alembic_cfg_path}")
-        
-        if alembic_cfg_path.exists():
-            print("✅ Found Alembic config file")
-            print("🔄 Running Alembic migrations...")
+        with engine.connect() as conn:
+            # Check if tables exist
+            result = conn.execute(text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public'"
+            ))
+            existing_tables = [row[0] for row in result.fetchall()]
             
-            # Configure Alembic
-            config = Config(str(alembic_cfg_path))
-            
-            # Set the database URL from environment
-            database_url = os.getenv("DATABASE_URL")
-            print(f"🔗 Database URL: {database_url[:20]}..." if database_url else "❌ No DATABASE_URL found")
-            
-            if database_url:
-                config.set_main_option("sqlalchemy.url", database_url)
-            
-            # Check if we have any tables (to distinguish fresh vs existing DB)
-            db_url = database_url or config.get_main_option("sqlalchemy.url")
-            print(f"🔗 Using DB URL: {db_url[:30]}...")
-            
-            engine = create_engine(db_url)
-            with engine.connect() as conn:
+            # Check if payment_method column exists in expenses table
+            payment_method_exists = False
+            if 'expenses' in existing_tables:
                 result = conn.execute(text(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = 'public'"
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'expenses' AND column_name = 'payment_method'"
                 ))
-                existing_tables = [row[0] for row in result.fetchall()]
-                print(f"📊 Found existing tables: {existing_tables}")
+                payment_method_exists = bool(result.fetchone())
             
-            if not existing_tables:
-                # Fresh database - create all tables from models
-                print("🆕 Fresh database detected - creating tables from models...")
-                init_database()
-            else:
-                # Existing database - run migrations
-                print("📊 Existing database detected - applying migrations...")
-                try:
-                    print("🚀 Running: alembic upgrade head")
-                    command.upgrade(config, "head")
-                    print("✅ Migrations completed successfully!")
-                    
-                    # Verify the migration worked
-                    with engine.connect() as conn:
-                        result = conn.execute(text(
-                            "SELECT column_name FROM information_schema.columns "
-                            "WHERE table_name = 'expenses' AND column_name = 'payment_method'"
-                        ))
-                        if result.fetchone():
-                            print("✅ payment_method column exists!")
-                        else:
-                            print("❌ payment_method column still missing!")
-                            
-                except Exception as migration_error:
-                    print(f"⚠️  Migration error: {migration_error}")
-                    print("🔄 Falling back to table creation...")
-                    init_database()
-        else:
-            # No Alembic config - use direct table creation
-            print(f"❌ No Alembic config found at {alembic_cfg_path}")
-            print("📋 Using direct table creation...")
-            init_database()
+            return {
+                'tables_exist': bool(existing_tables),
+                'existing_tables': existing_tables,
+                'payment_method_exists': payment_method_exists
+            }
+    except Exception as e:
+        print(f"❌ Error checking database state: {e}")
+        return None
+
+
+def run_alembic_migration(config, engine):
+    """Run Alembic migration with proper error handling."""
+    try:
+        print("🔄 Running Alembic migration...")
+        command.upgrade(config, "head")
+        print("✅ Alembic migration completed successfully!")
+        return True
+    except Exception as e:
+        print(f"⚠️  Alembic migration failed: {e}")
+        return False
+
+
+def run_sql_migration(engine):
+    """Run SQL migration to add missing columns."""
+    try:
+        print("🔧 Running SQL migration...")
+        
+        with engine.connect() as conn:
+            # Create PaymentMethod enum
+            conn.execute(text("""
+                DO $$ BEGIN
+                    CREATE TYPE paymentmethod AS ENUM (
+                        'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'CASH'
+                    );
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
+            """))
+            
+            # Add missing columns
+            conn.execute(text("""
+                ALTER TABLE expenses 
+                ADD COLUMN IF NOT EXISTS payment_method paymentmethod NOT NULL DEFAULT 'DEBIT_CARD'
+            """))
+            
+            conn.execute(text("""
+                ALTER TABLE expenses 
+                ADD COLUMN IF NOT EXISTS billing_date TIMESTAMP WITH TIME ZONE
+            """))
+            
+            conn.execute(text("""
+                ALTER TABLE expenses 
+                ADD COLUMN IF NOT EXISTS card_last_four VARCHAR(4)
+            """))
+            
+            # Set billing_date for existing records
+            conn.execute(text("""
+                UPDATE expenses 
+                SET billing_date = transaction_date 
+                WHERE billing_date IS NULL
+            """))
+            
+            conn.commit()
+            print("✅ SQL migration completed successfully!")
+            return True
             
     except Exception as e:
-        print(f"❌ Database setup error: {e}")
-        print("🔄 Attempting direct table creation...")
-        try:
-            init_database()
-        except Exception as init_error:
-            print(f"❌ Database initialization failed: {init_error}")
-            sys.exit(1)
+        print(f"❌ SQL migration failed: {e}")
+        return False
+
+
+def setup_database():
+    """Set up the database with proper migration handling."""
+    print("📦 Setting up database...")
+    
+    # Get database URL
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        print("❌ DATABASE_URL environment variable not set")
+        sys.exit(1)
+    
+    # Handle Render's postgres URL format
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    print(f"🔗 Database URL: {database_url[:30]}...")
+    
+    # Create engine
+    engine = create_engine(database_url)
+    
+    # Check database state
+    db_state = check_database_state(engine)
+    if db_state is None:
+        print("❌ Cannot connect to database")
+        sys.exit(1)
+    
+    print(f"📊 Database state: {db_state}")
+    
+    # Handle different scenarios
+    if not db_state['tables_exist']:
+        # Fresh database - create all tables
+        print("🆕 Fresh database detected - creating tables...")
+        init_database()
+        print("✅ Database initialized successfully!")
+        
+    elif not db_state['payment_method_exists']:
+        # Existing database needs migration
+        print("📊 Existing database needs migration...")
+        
+        # Try Alembic first
+        if ALEMBIC_AVAILABLE:
+            alembic_cfg_path = Path(__file__).parent / "app" / "alembic.ini"
+            if alembic_cfg_path.exists():
+                config = Config(str(alembic_cfg_path))
+                config.set_main_option("sqlalchemy.url", database_url)
+                
+                if run_alembic_migration(config, engine):
+                    print("✅ Migration completed with Alembic!")
+                else:
+                    print("🔄 Alembic failed, trying SQL migration...")
+                    if not run_sql_migration(engine):
+                        print("❌ All migration methods failed")
+                        sys.exit(1)
+            else:
+                print("❌ Alembic config not found, using SQL migration...")
+                if not run_sql_migration(engine):
+                    print("❌ SQL migration failed")
+                    sys.exit(1)
+        else:
+            print("📋 Alembic not available, using SQL migration...")
+            if not run_sql_migration(engine):
+                print("❌ SQL migration failed")
+                sys.exit(1)
+    else:
+        # Database is up to date
+        print("✅ Database is up to date!")
 
 
 def main():
     """Main startup function."""
     print("🚀 Starting Expense Tracker API...")
-
-    # Run migrations or initialize database
-    run_migrations()
+    
+    # Set up database
+    setup_database()
     print("✅ Database ready!")
-
+    
     # Start the server
     print("🌐 Starting FastAPI server...")
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     reload = os.getenv("ENVIRONMENT") != "production"
-
+    
     uvicorn.run(
-        "app.main:app", 
-        host=host, 
-        port=port, 
-        reload=reload, 
+        "app.main:app",
+        host=host,
+        port=port,
+        reload=reload,
         access_log=True
     )
 

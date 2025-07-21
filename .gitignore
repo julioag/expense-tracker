@@ -251,7 +251,11 @@ __pypackages__/
 # Local development files
 local_*
 dev_*
-test_*
+# Test files (but allow specific test files we want to keep)
+test_*.py
+test_*.js
+!app/test_*.py
+!test_spanish_parser.js
 
 # Node.js (if any future frontend)
 node_modules/
