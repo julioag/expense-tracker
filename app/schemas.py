@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
+from models import PaymentMethod
 
 
 class CategoryBase(BaseModel):
@@ -64,11 +65,14 @@ class ExpenseBase(BaseModel):
     description: str | None = None
     transaction_date: datetime
     category_id: int | None = None
+    payment_method: PaymentMethod = PaymentMethod.DEBIT_CARD
+    card_last_four: str | None = Field(None, max_length=4, min_length=4)
 
 
 class ExpenseCreate(ExpenseBase):
     source_email: str | None = Field(None, max_length=255)
     raw_data: str | None = None
+    billing_date: datetime | None = None  # Optional, calculated if None
 
 
 class ExpenseUpdate(BaseModel):
@@ -77,10 +81,14 @@ class ExpenseUpdate(BaseModel):
     description: str | None = None
     transaction_date: datetime | None = None
     category_id: int | None = None
+    payment_method: PaymentMethod | None = None
+    card_last_four: str | None = Field(None, max_length=4, min_length=4)
+    billing_date: datetime | None = None
 
 
 class Expense(ExpenseBase):
     id: int
+    billing_date: datetime  # When expense affects budget
     source_email: str | None
     raw_data: str | None
     auto_categorized: bool
@@ -101,6 +109,8 @@ class WebhookExpense(BaseModel):
     transaction_date: datetime
     source_email: str | None = Field(None, max_length=255)
     raw_data: str | None = None
+    payment_method: PaymentMethod | None = None  # Will be auto-detected
+    card_last_four: str | None = Field(None, max_length=4, min_length=4)
 
 
 # Analytics schemas
@@ -116,3 +126,11 @@ class CategoryExpenseSummary(BaseModel):
     total_amount: float
     transaction_count: int
     percentage_of_total: float
+
+
+# Configuration schema for billing cycles
+class BillingConfig(BaseModel):
+    credit_card_billing_day: int = Field(
+        default=15, ge=1, le=31
+    )  # Day of month for credit card billing
+    timezone: str = Field(default="America/New_York")  # For date calculations

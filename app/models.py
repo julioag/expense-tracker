@@ -3,14 +3,23 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum,
     Float,
     ForeignKey,
     Integer,
     String,
     Text,
 )
+import enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
+
+class PaymentMethod(enum.Enum):
+    CREDIT_CARD = "CREDIT_CARD"
+    DEBIT_CARD = "DEBIT_CARD"
+    BANK_TRANSFER = "BANK_TRANSFER"
+    CASH = "CASH"
 
 
 class Category(Base):
@@ -52,8 +61,19 @@ class Expense(Base):
     amount = Column(Float, nullable=False)
     merchant = Column(String(255), nullable=False, index=True)
     description = Column(Text)
-    transaction_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    transaction_date = Column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     category_id = Column(Integer, ForeignKey("categories.id"))
+
+    # Payment method and billing logic
+    payment_method = Column(
+        Enum(PaymentMethod), nullable=False, default=PaymentMethod.DEBIT_CARD
+    )
+    billing_date = Column(
+        DateTime(timezone=True), nullable=False, index=True
+    )  # When expense affects budget
+    card_last_four = Column(String(4))  # Last 4 digits for identification
 
     # Source information (for n8n integration)
     source_email = Column(String(255))  # Which email this came from
