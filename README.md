@@ -48,6 +48,16 @@ This project is designed in three iterations:
 - `DELETE /merchant-rules/{id}` - Delete rule
 - `POST /merchant-rules/test-rule` - Test a rule pattern
 
+### Authentication
+
+All API endpoints (except documentation) require authentication using an API key:
+
+- **Header**: `x-api-key`
+- **Environment Variable**: `API_KEY`
+- **Example**: `curl -H "x-api-key: your-secret-api-key" http://localhost:8000/expenses/`
+
+> ⚠️ **Security Note**: Update the `API_KEY` in `docker-compose.yml` before deploying to production.
+
 ## Quick Start
 
 ### Option 1: Docker (Recommended for Local Development) 🐳

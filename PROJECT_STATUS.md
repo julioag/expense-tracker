@@ -53,6 +53,11 @@ MerchantRules (for categorization logic)
 
 #### **API Endpoints (All Working)**
 
+**Authentication**:
+- **API Key Required**: All endpoints (except docs) require `x-api-key` header
+- **Security**: Environment-based API key configuration
+- **Documentation**: Swagger UI accessible without authentication
+
 **Expenses**:
 - `POST /expenses/` - Create with auto-categorization
 - `GET /expenses/` - List with filtering (date, category, merchant)

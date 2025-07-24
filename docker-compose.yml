@@ -30,6 +30,7 @@ services:
       ENVIRONMENT: development
       HOST: 0.0.0.0
       PORT: 8000
+      API_KEY: apikey123
     ports:
       - "8000:8000"
     volumes:
