@@ -62,7 +62,7 @@ if not API_KEY:
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
     """Middleware to validate API key for all requests."""
-    if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
+    if request.url.path in ["/docs", "/redoc", "/openapi.json", "/health"]:
         return await call_next(request)
     
     api_key = request.headers.get("x-api-key")
