@@ -22,9 +22,11 @@ app = FastAPI(
 mcp = FastApiMCP(app,
                  name="Expense Tracker MCP",
                  include_operations=["get_expenses"],
+                 headers=['x-api-key'],
                  describe_all_responses=True,
                  describe_full_response_schema=True)
 mcp.mount()
+
 
 def custom_openapi():
     if app.openapi_schema:
