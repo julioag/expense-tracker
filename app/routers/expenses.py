@@ -63,7 +63,8 @@ def create_expense(expense: ExpenseCreate, db: Session = Depends(get_db)):
     return db_expense
 
 
-@router.get("/", response_model=list[ExpenseSchema])
+@router.get("/", response_model=list[ExpenseSchema], 
+            operation_id="get_expenses")
 def get_expenses(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),

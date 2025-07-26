@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
+from fastapi_mcp import FastApiMCP
 from routers import categories, expenses, merchant_rules
 
 # Create database tables
@@ -17,6 +18,12 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+mcp = FastApiMCP(app,
+                 name="Expense Tracker MCP",
+                 include_operations=["get_expenses"],
+                 describe_all_responses=True,
+                 describe_full_response_schema=True)
 
 
 def custom_openapi():
@@ -117,6 +124,8 @@ def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
 
+
+mcp.mount()
 
 if __name__ == "__main__":
     import uvicorn
