@@ -24,7 +24,7 @@ mcp = FastApiMCP(app,
                  include_operations=["get_expenses"],
                  describe_all_responses=True,
                  describe_full_response_schema=True)
-
+mcp.mount()
 
 def custom_openapi():
     if app.openapi_schema:
@@ -125,7 +125,7 @@ def health_check():
     return {"status": "healthy"}
 
 
-mcp.mount()
+mcp.setup_server()
 
 if __name__ == "__main__":
     import uvicorn
