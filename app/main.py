@@ -21,7 +21,10 @@ app = FastAPI(
 
 mcp = FastApiMCP(app,
                  name="Expense Tracker MCP",
-                 include_operations=["get_expenses"],
+                 include_operations=["get_expenses",
+                                     "get_categories", 
+                                     "create_merchant_rule",
+                                     "get_merchant_rules"],
                  headers=['x-api-key'],
                  describe_all_responses=True,
                  describe_full_response_schema=True)

@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/merchant-rules", tags=["merchant-rules"])
 
 
-@router.post("/", response_model=MerchantRuleSchema)
+@router.post("/",
+             response_model=MerchantRuleSchema,
+             operation_id="create_merchant_rule")
 def create_merchant_rule(rule: MerchantRuleCreate, db: Session = Depends(get_db)):
     """Create a new merchant rule for expense categorization."""
     db_rule = MerchantRule(

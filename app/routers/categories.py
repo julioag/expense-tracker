@@ -28,7 +28,8 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     return db_category
 
 
-@router.get("/", response_model=list[CategorySchema])
+@router.get("/", response_model=list[CategorySchema],
+            operation_id="get_categories")
 def get_categories(db: Session = Depends(get_db)):
     """Get all expense categories."""
     categories = db.query(Category).order_by(Category.name).all()
