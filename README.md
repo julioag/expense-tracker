@@ -280,6 +280,31 @@ The system uses a sophisticated categorization approach:
 - Create analytics and insight endpoints
 - Connect with LM Studio for AI-powered expense analysis
 
+#### MCP Configuration
+
+To connect to the expense tracker MCP server, add this configuration to your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "expense-tracker": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://expense-tracker-8i18.onrender.com/",
+        "--header",
+        "x-api-key: ${API_KEY}"
+      ],
+      "env": {
+        "API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+Replace `your-api-key-here` with your actual API key.
+
 ## Development
 
 ### Project Structure
