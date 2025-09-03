@@ -1,0 +1,503 @@
+{
+  "name": "Expense automation",
+  "nodes": [
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "arr = []\nfor item in _input.all():\n  if len(item.json) != 0:\n    sub = item.json.Subject\n    if sub == 'Cargo en Cuenta' or sub == 'Compra con Tarjeta de Crédito':\n      arr.append(item)\nreturn arr\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "63eb84fb-4fa7-4cb0-aad0-1580b6ef0cb2",
+      "name": "Filter subjects",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "60b136d5-e5da-4908-bb04-231a2992be08",
+              "leftValue": "={{ $input.all() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        144,
+        0
+      ],
+      "id": "97310c4a-b39e-4b3f-a491-04befba7d4c0",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "https://YOUR_API_DOMAIN.com/health",
+        "options": {
+          "lowercaseHeaders": false,
+          "redirect": {
+            "redirect": {}
+          },
+          "timeout": 70000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -224,
+        -304
+      ],
+      "id": "e6b4cf14-238a-438d-a9fe-6aa6cbd1a837",
+      "name": "WAKE UP API",
+      "alwaysOutputData": true,
+      "retryOnFail": false,
+      "waitBetweenTries": 5000,
+      "executeOnce": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_API_DOMAIN.com/expenses/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_API_KEY_HERE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "amount",
+              "value": "={{ $json.amount }}"
+            },
+            {
+              "name": "merchant",
+              "value": "={{ $json.merchant }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.description }}"
+            },
+            {
+              "name": "source_email",
+              "value": "banco chile"
+            },
+            {
+              "name": "raw_data",
+              "value": "={{ $json.raw_data }}"
+            },
+            {
+              "name": "transaction_date",
+              "value": "={{ $json.transaction_date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1616,
+        -16
+      ],
+      "id": "d4432ada-31a1-42a1-bce8-df2a108e1f73",
+      "name": "POST credit expenses"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const emailContent = $input.item.json.snippet\n// Extract amount - pattern: \"por $71.000\"\nconst amountMatch = emailContent.match(/por\\s*\\$([0-9.,]+)/i);\nlet amount = null;\nif (amountMatch) {\n    let amountStr = amountMatch[1].replace(/\\./g, ''); // Remove dots (thousand separators)\n    amount = parseFloat(amountStr);\n}\n\n// Extract merchant - pattern: \"en [MERCHANT] el\"\nconst merchantMatch = emailContent.match(/en\\s+([A-Z0-9\\s\\-\\.]+?)\\s+el\\s+\\d/i);\nlet merchant = null;\nif (merchantMatch) {\n    merchant = merchantMatch[1].trim()\n        .toLowerCase()\n        .split(' ')\n        .map(word => word.charAt(0).toUpperCase() + word.slice(1))\n        .join(' ');\n}\n\n// Extract date - pattern: \"el 19/07/2025 22:23\"\nconst dateMatch = emailContent.match(/el\\s+(\\d{1,2}\\/\\d{1,2}\\/\\d{4})\\s+(\\d{1,2}:\\d{2})/i);\nlet transaction_date = new Date().toISOString(); // fallback to now\nif (dateMatch) {\n    const [day, month, year] = dateMatch[1].split('/');\n    const time = dateMatch[2];\n    transaction_date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}:00`;\n}\n\n// Return data for webhook\nreturn {\n    json: {\n        amount: amount,\n        merchant: merchant,\n        description: `Purchase at ${merchant || 'Unknown'}`,\n        transaction_date: transaction_date,\n        source_email: \"spanish_bank\",\n        raw_data: emailContent\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        -16
+      ],
+      "id": "6a45a82b-1411-4ad4-9873-eef9e185da27",
+      "name": "Code",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_API_DOMAIN.com/expenses/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_API_KEY_HERE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "amount",
+              "value": "={{ $json.amount }}"
+            },
+            {
+              "name": "merchant",
+              "value": "={{ $json.merchant }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.description }}"
+            },
+            {
+              "name": "source_email",
+              "value": "banco chile"
+            },
+            {
+              "name": "raw_data",
+              "value": "={{ $json.raw_data }}"
+            },
+            {
+              "name": "transaction_date",
+              "value": "={{ $json.transaction_date }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1632,
+        176
+      ],
+      "id": "004ed833-7554-413d-a5b8-8791e12de5e7",
+      "name": "POST debit expenses",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/**\n * n8n Function Node: Debit Card Expense Parser\n * \n * Parses debit card expense emails from Spanish bank\n * Extracts: amount, merchant, transaction_date, card_last_four, payment_method\n * \n * Input: Email content as string\n * Output: Structured expense data for API\n */\n\nfunction parseDebitCardExpense(emailContent) {\n    // Clean and normalize the email content\n    const cleanContent = emailContent.trim();\n    console.log(\"📧 Parsing email content:\", cleanContent);\n\n    // Extract amount - looks for \"$\" followed by numbers and optional comma\n    const amountMatch = cleanContent.match(/\\$([\\d\\.,]+)/);\n    let amountStr = amountMatch[1];\n    // Remove thousands separator (.)\n    amountStr = amountStr.replace(/\\./g, '');\n    // Replace decimal separator (,) with (.)\n    amountStr = amountStr.replace(/,/g, '.');\n    const amount = parseFloat(amountStr);\n\n    // Extract card last four digits - looks for \"****\" followed by 4 digits\n    const cardMatch = cleanContent.match(/Cuenta \\*{4}(\\d{4})/);\n    const card_last_four = cardMatch[1];\n\n    // Extract merchant - looks for \"en MERCHANT_NAME el\" pattern\n    // Handle merchants that might contain asterisks or special characters\n    const merchantMatch = cleanContent.match(/en ([^*\\n]+?(?:\\*[^*\\n]+?)*?) el \\d{2}\\/\\d{2}\\/\\d{4}/);\n    const merchant = merchantMatch[1].trim();\n\n    // Extract transaction date - looks for \"DD/MM/YYYY HH:MM\" pattern\n    const dateMatch = cleanContent.match(/(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(\\d{2}:\\d{2})/);\n    \n    // Parse date components\n    const [day, month, year] = dateMatch[1].split('/');\n    const [hour, minute] = dateMatch[2].split(':');\n    \n    // Create ISO date string (assuming timezone is local to the bank)\n    const transaction_date = new Date(\n        parseInt(year),\n        parseInt(month) - 1, // Month is 0-indexed\n        parseInt(day),\n        parseInt(hour),\n        parseInt(minute)\n    ).toISOString();\n\n    // Determine payment method (this is clearly a debit card transaction)\n    const payment_method = \"DEBIT_CARD\";\n\n    // Create description\n    const description = `Purchase at ${merchant}`;\n\n    console.log(\"✅ Parsed data:\", {\n        amount,\n        merchant,\n        transaction_date,\n        card_last_four,\n        payment_method,\n        description\n    });\n\n    return {\n        amount: amount,\n        merchant: merchant,\n        description: description,\n        transaction_date: transaction_date,\n        source_email: \"debit_card_notification\",\n        raw_data: cleanContent,\n        payment_method: payment_method,\n        card_last_four: card_last_four\n    };\n}\n\n// n8n Function Node expects this format\nconst emailContent = $input.item.json.snippet\n\nconst parsedData = parseDebitCardExpense(emailContent);\n\n// Return in n8n expected format\nreturn {\n    json: parsedData\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        176
+      ],
+      "id": "88847017-5a4e-4129-8f44-71edbbffd822",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2c021d34-5e17-4488-87ea-3f7a116c66da",
+              "leftValue": "={{ $input.all().filter(item => item.json.Subject === 'Compra con Tarjeta de Crédito') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "26066764-d2d3-4c40-b413-eb002eb27560",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "838539dc-6d1e-4d73-9fd7-81f384aac60d",
+              "leftValue": "={{ $input.all().filter(item => item.json.Subject === 'Cargo en Cuenta') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        160
+      ],
+      "id": "7a2e63b6-1fcc-44da-a718-70e4a74ada8d",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "q": "=newer_than:1d from:YOUR_BANK_EMAIL@example.com subject:\"cargo en cuenta\"\n"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "1ddb31fe-29a4-4e60-9f60-cce013c672b2",
+      "name": "Get many messages",
+      "webhookId": "YOUR_WEBHOOK_ID_HERE",
+      "alwaysOutputData": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_OAUTH2_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 23,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        0
+      ],
+      "id": "b4c549d1-f2d5-4b4d-9bbe-56d25f058b5c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 23,
+              "triggerAtMinute": 25
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        -304
+      ],
+      "id": "ddfec311-a765-4597-8f23-dfa6558cb1b9",
+      "name": "Wake up api trigger"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2025-08-12T23:30:34.013-04:00",
+          "Readable date": "August 12th 2025, 11:30:34 pm",
+          "Readable time": "11:30:34 pm",
+          "Day of week": "Tuesday",
+          "Year": "2025",
+          "Month": "August",
+          "Day of month": "12",
+          "Hour": "23",
+          "Minute": "30",
+          "Second": "34",
+          "Timezone": "America/Santiago (UTC-04:00)"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Filter subjects": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAKE UP API": {
+      "main": [
+        []
+      ]
+    },
+    "POST credit expenses": {
+      "main": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "POST credit expenses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "POST debit expenses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Filter subjects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wake up api trigger": {
+      "main": [
+        [
+          {
+            "node": "WAKE UP API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "YOUR_VERSION_ID_HERE",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID_HERE"
+  },
+  "id": "YOUR_WORKFLOW_ID_HERE",
+  "tags": [
+    {
+      "createdAt": "2025-07-21T03:55:36.132Z",
+      "updatedAt": "2025-07-21T03:55:36.132Z",
+      "id": "YOUR_TAG_ID_HERE",
+      "name": "expense-tracker"
+    }
+  ]
+}
