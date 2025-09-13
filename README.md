@@ -288,16 +288,12 @@ To connect to the expense tracker MCP server, add this configuration to your MCP
 {
   "mcpServers": {
     "expense-tracker": {
-      "command": "npx",
+      "command": "/route/to/claude-script.sh",
       "args": [
-        "mcp-remote",
-        "https://expense-tracker-8i18.onrender.com/",
+        "https://your-server.com/mcp",
         "--header",
-        "x-api-key: ${API_KEY}"
+        "x-api-key: your-api-key"
       ],
-      "env": {
-        "API_KEY": "your-api-key-here"
-      }
     }
   }
 }
