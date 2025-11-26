@@ -10,7 +10,7 @@ if os.getenv("ENVIRONMENT") != "production":
     load_dotenv()
 
 # Database configuration with better defaults for Render
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_POSTGRES_URL")
 
 if not DATABASE_URL:
     # Development fallback

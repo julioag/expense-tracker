@@ -120,9 +120,9 @@ def setup_database():
     print("📦 Setting up database...")
     
     # Get database URL
-    database_url = os.getenv("DATABASE_URL")
+    database_url = os.getenv("DATABASE_POSTGRES_URL")
     if not database_url:
-        print("❌ DATABASE_URL environment variable not set")
+        print("❌ DATABASE_POSTGRES_URL environment variable not set")
         sys.exit(1)
     
     # Handle Render's postgres URL format
