@@ -52,7 +52,12 @@ try:
 except Exception as e:
     print(f"⚠️ Error sanitizing DATABASE_URL: {e}")
 
-engine = create_engine(DATABASE_URL)
+# Force search_path to public to avoid "no schema has been selected to create in" error
+# This is especially important for Supabase Transaction Poolers
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"options": "-c search_path=public"}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
