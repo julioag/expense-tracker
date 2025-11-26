@@ -10,7 +10,8 @@ if os.getenv("ENVIRONMENT") != "production":
     load_dotenv()
 
 # Database configuration with better defaults for Render
-DATABASE_URL = os.getenv("DATABASE_POSTGRES_URL")
+# Check DATABASE_URL first (standard), then DATABASE_POSTGRES_URL (Vercel/Supabase integration)
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_POSTGRES_URL")
 
 if not DATABASE_URL:
     # Development fallback
@@ -44,6 +45,9 @@ try:
             print(f"⚠️ Removed invalid query parameters from DATABASE_URL: {set(url_obj.query) - set(new_query)}")
             url_obj = url_obj._replace(query=new_query)
             DATABASE_URL = str(url_obj)
+    
+    # Debug: Print the username being used (masked)
+    print(f"🔌 Connecting to database as user: '{url_obj.username}' on host: '{url_obj.host}' port: '{url_obj.port}'")
             
 except Exception as e:
     print(f"⚠️ Error sanitizing DATABASE_URL: {e}")
