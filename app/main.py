@@ -1,4 +1,10 @@
+import sys
 import os
+
+# Add the current directory to sys.path to allow imports from the same directory
+# This is necessary for Vercel deployment where the script is run from the root
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from database import Base, engine
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

@@ -3,6 +3,12 @@ Database initialization script.
 This script creates the database tables and populates them with default data.
 """
 
+import sys
+import os
+
+# Add the current directory to sys.path to allow imports from the same directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from database import Base, SessionLocal, engine
 from models import Category
 from sqlalchemy.orm import Session

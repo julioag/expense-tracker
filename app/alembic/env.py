@@ -13,6 +13,11 @@ import models  # noqa: F401  # Import models for Base registration
 # access to the values within the .ini file in use.
 config = context.config
 
+# Override sqlalchemy.url with environment variable if present
+import os
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
